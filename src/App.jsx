@@ -620,8 +620,22 @@ const App = () => {
                     <tbody className="divide-y divide-white/5">
                       {projects.map((p, idx) => (
                         <tr key={idx} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setSelectedProject(p)}>
-                          <td className="px-6 py-5 font-mono text-[11px] text-blue-400">{p.securityKey}</td>
-                          <td className="px-6 py-5 text-[11px] font-black uppercase">{p.agency}</td>
+                          <td className="px-6 py-5 font-mono text-[11px] text-blue-400">
+                            {p.securityKey}
+                            {p.anomalies && p.anomalies.length > 0 && (
+                              <div className="mt-1 flex gap-1">
+                                {p.anomalies.map((a, i) => (
+                                  <span key={i} className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" title={`${a} Detected`}></span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-5 text-[11px] font-black uppercase">
+                            {p.agency}
+                            {p.anomalies && p.anomalies.length > 0 && (
+                              <span className="ml-2 text-[8px] text-red-500 border border-red-500/30 px-1 py-0.5 rounded bg-red-900/20">⚠</span>
+                            )}
+                          </td>
                           <td className="px-6 py-5 text-sm font-black italic">{formatPHP(p.budget)}</td>
                           <td className="px-6 py-5"><div className="flex items-center text-[9px] font-black text-emerald-500 uppercase tracking-widest"><ShieldCheck size={14} className="mr-2" /> Verified</div></td>
                           <td className="px-6 py-5 text-[10px] text-slate-500 font-bold uppercase">Jan 2026</td>
@@ -1053,9 +1067,42 @@ const App = () => {
 
                 {/* Project Details */}
                 <div className="bg-[#0a0e17] p-6 rounded border border-white/10">
-                  <h4 className="text-lg font-black text-white uppercase mb-2">{selectedProject.name}</h4>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{selectedProject.agency} • {selectedProject.location}</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-lg font-black text-white uppercase mb-2">{selectedProject.name}</h4>
+                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{selectedProject.agency} • {selectedProject.location}</p>
+                    </div>
+                    {selectedProject.anomalies && selectedProject.anomalies.length > 0 && (
+                      <div className="flex flex-col gap-1 items-end">
+                        {selectedProject.anomalies.map((anomaly, idx) => (
+                          <span key={idx} className="bg-red-900/40 border border-red-500/40 text-red-500 px-2 py-1 round text-[8px] font-black uppercase tracking-widest flex items-center shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                            <Activity size={10} className="mr-1 animate-pulse" /> {anomaly} Detected
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Multi-Sig Approvals */}
+                {selectedProject.signatures && (
+                  <div className="bg-[#0a0e17] p-4 rounded border border-white/10">
+                    <h5 className="text-[10px] font-black text-white uppercase mb-4 flex items-center gap-2">
+                      Multi-Signature Approvals
+                    </h5>
+                    <MultiSig signatures={selectedProject.signatures} />
+                  </div>
+                )}
+
+                {/* Disbursement Timeline */}
+                {selectedProject.disbursements && (
+                  <div className="bg-[#0a0e17] p-4 rounded border border-white/10">
+                    <h5 className="text-[10px] font-black text-white uppercase mb-4 flex items-center gap-2">
+                      <TrendingUp size={14} className="text-amber-400" /> Disbursement Timeline
+                    </h5>
+                    <Timeline items={selectedProject.disbursements} />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[#0a0e17] p-4 rounded border border-white/10">
@@ -1263,10 +1310,63 @@ const StatCard = ({ title, value, color, icon: Icon }) => (
       }`}>
       <Icon size={20} />
     </div>
-    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 leading-none">{title}</p>
-    <p className="text-xl font-black text-white italic leading-none">{value}</p>
+    <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-1">{title}</h3>
+    <p className={`text-2xl font-black italic tracking-tighter ${color === 'blue' ? 'text-white' :
+      color === 'gold' ? 'text-amber-400' : 'text-emerald-400'
+      }`}>{value}</p>
   </div>
 );
+
+const Timeline = ({ items }) => (
+  <div className="space-y-4">
+    {items.map((item, idx) => (
+      <div key={idx} className="relative pl-6 border-l-2 border-white/10 last:border-0">
+        <div className={`absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full ${item.status === 'Released' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' :
+          item.status === 'Locked' ? 'bg-slate-700' : 'bg-amber-400 animate-pulse'
+          }`}></div>
+        <p className="text-[10px] font-black text-white uppercase">{item.phase}</p>
+        <div className="flex justify-between items-center mt-1">
+          <span className="text-xs font-bold text-amber-400 italic">{formatPHP(item.amount)}</span>
+          <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${item.status === 'Released' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' :
+            item.status === 'Locked' ? 'bg-white/5 text-slate-500 border border-white/5' :
+              'bg-amber-900/30 text-amber-400 border border-amber-500/30'
+            }`}>{item.status}</span>
+        </div>
+        {item.date && <p className="text-[8px] text-slate-500 mt-1">{item.date}</p>}
+      </div>
+    ))}
+  </div>
+);
+
+const MultiSig = ({ signatures }) => (
+  <div className="flex items-center justify-between gap-2">
+    {signatures.map((sig, idx) => (
+      <div key={idx} className="flex-1 bg-[#0a0e17] p-2 rounded border border-white/10 flex flex-col items-center text-center">
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-2 ${sig.status === 'Signed' ? 'bg-emerald-400 text-blue-900' : 'bg-white/5 text-slate-600'
+          }`}>
+          {sig.status === 'Signed' ? <Check size={12} strokeWidth={4} /> : <Lock size={12} />}
+        </div>
+        <p className="text-[8px] font-black text-slate-300 uppercase leading-tight">{sig.role}</p>
+        <p className={`text-[8px] font-bold mt-1 uppercase ${sig.status === 'Signed' ? 'text-emerald-400' : 'text-slate-600'
+          }`}>{sig.status}</p>
+      </div>
+    ))}
+  </div>
+);
+
+// formatPHP helper needs to be available or duplicated here if not exported. 
+// However, since these are in the same file, I should move formatPHP out or pass it as prop/context.
+// Quick fix: pass formatter or just use simple formatting inside if needed, 
+// BUT formatPHP is defined inside the main component. I should move formatPHP outside or just duplicate simple formatting.
+// Actually, I can format it inside the component if passed as a string or number.
+// Since formatPHP is inside the main component, I should invoke it before passing props or move it out.
+// Let's assume standard number formatting for now inside the component to avoid issues, or make formatPHP global.
+// I'll define a local helper inside Timeline since I can't easily move the main one without more edits.
+const formatPHP = (val) => {
+  if (val >= 1e12) return `₱${(val / 1e12).toFixed(2)}T`;
+  if (val >= 1e9) return `₱${(val / 1e9).toFixed(2)}B`;
+  return `₱${val.toLocaleString()}`;
+};
 
 const StatusNode = ({ name, active }) => (
   <div className={`flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded ${!active ? 'opacity-30' : ''}`}>
